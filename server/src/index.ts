@@ -38,38 +38,46 @@ const io = new Server(server, {
 const onlineUsers = new Map<string, string>();
 
 io.on('connection', (socket) => {
-  console.log('🟢 New socket connected:', socket.id);
+  console.log('🟢 [SOCKET] New socket connected:', socket.id);
 
   // ✅ Step 1: Register user to socket map
   socket.on('add-user', (userId: string) => {
     onlineUsers.set(userId, socket.id);
-    console.log(`✅ add-user: User ${userId} is now online with socket ${socket.id}`);
-    console.log('🌍 Current onlineUsers map:', Object.fromEntries(onlineUsers));
+    console.log(`✅ [SOCKET] add-user: ${userId} → socket ${socket.id}`);
+    console.log('🌐 [SOCKET] Current online users:', Object.fromEntries(onlineUsers));
   });
 
-  // ✅ Step 2: Handle send-message
-  socket.on('send-message', ({ to, message }) => {
-    console.log(`📤 Message from ${socket.id} to user ${to}`);
-    console.log(`📝 Message content:`, message);
+  // ✅ Step 2: Handle real-time message
+  socket.on('send-msg', ({ to, msg }) => {
+    console.log(`📤 [SOCKET] send-msg from socket ${socket.id} to user ${to}`);
+    console.log(`📝 [SOCKET] Message:`, msg);
 
     const receiverSocketId = onlineUsers.get(to);
+
+    // 🔍 Get sender userId from socket.id
+    const senderId = [...onlineUsers.entries()].find(([_, sid]) => sid === socket.id)?.[0];
+
+    if (!senderId) {
+      console.warn(`⚠️ [SOCKET] Could not find sender userId for socket ${socket.id}`);
+      return;
+    }
+
     if (receiverSocketId) {
-      console.log(`📡 Emitting msg-receive to socket ${receiverSocketId}`);
-      io.to(receiverSocketId).emit('msg-receive', message);
+      console.log(`📡 [SOCKET] Emitting 'msg-receive' to socket ${receiverSocketId}`);
+      io.to(receiverSocketId).emit('msg-receive', msg, senderId);
     } else {
-      console.warn(`⚠️ User ${to} is offline. No socket found.`);
+      console.warn(`⚠️ [SOCKET] User ${to} is offline. No socket found.`);
     }
   });
 
   // ✅ Step 3: Handle disconnect
   socket.on('disconnect', () => {
-    console.log('🔴 Socket disconnected:', socket.id);
+    console.log('🔴 [SOCKET] Disconnected socket:', socket.id);
 
-    // 🧹 Clean up: remove from onlineUsers
     for (const [userId, socketId] of onlineUsers.entries()) {
       if (socketId === socket.id) {
         onlineUsers.delete(userId);
-        console.log(`🧹 Removed user ${userId} from online users.`);
+        console.log(`🧹 [SOCKET] Removed user ${userId} from onlineUsers map`);
         break;
       }
     }

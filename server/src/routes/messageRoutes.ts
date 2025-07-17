@@ -1,23 +1,21 @@
-// 1. I need Router to define routes
-import { Router } from 'express';
-
-// 2. I import the two functions I already wrote in my controller
+import { Router, Request, Response, NextFunction } from 'express';
 import { sendMessage, getMessages } from '../controllers/messageController';
+import { verifyToken } from '../middleware/authMiddleware';
 
-// 3. I import the middleware to protect the routes
-import { verifyToken } from "../middleware/authMiddleware"; // ✅ CORRECT
-
-
-// 4. Create the router
 const router = Router();
 
-// 5. Route to send a new message
-// POST /api/messages  => { from, to, message }
+// Middleware to log route hits and auth check
+const logRoute = (req: Request, res: Response, next: NextFunction) => {
+  console.log(`🔔 [messageRoutes] ${req.method} ${req.originalUrl} - User Authenticated: ${!!req.headers.authorization}`);
+  next();
+};
+
+router.use(logRoute);
+
+// POST /api/messages - send message
 router.post('/', verifyToken, sendMessage);
 
-// 6. Route to get all messages between two users
-// GET /api/messages/:from/:to
+// GET /api/messages/:from/:to - get messages between users
 router.get('/:from/:to', verifyToken, getMessages);
 
-// 7. Export the router so I can use it in index.ts
 export default router;
